@@ -1,0 +1,116 @@
+name: sanctum8
+
+#
+# Laravel recipe
+#------------------------------------------------------------------------------
+
+recipe: laravel
+config:
+  php: "8.0"
+  composer_version: 2
+  via: nginx
+  webroot: public
+  database: mysql
+  cache: redis:6
+  xdebug: true
+  config:
+    php: .lando/php.ini
+  build:
+    - composer install --no-plugins
+    - php artisan key:generate
+    - php artisan storage:link
+
+#
+# Services
+#------------------------------------------------------------------------------
+
+services:
+
+  appserver:
+    scanner: false
+    overrides:
+      environment:
+        PHP_IDE_CONFIG: "serverName=localhost"
+
+  database:
+    portforward: 5442
+    creds:
+      user: lara
+      password: laura
+      database: laravel
+    scanner: false
+
+  cache:
+    portforward: false
+    scanner: false
+
+  email:
+    type: mailhog
+    portforward: false
+    scanner: false
+    hogfrom:
+      - appserver
+
+  queue:
+    type: php:8.0
+    via: cli
+    xdebug: false
+    scanner: false
+    command: php artisan queue:work
+
+  node:
+    type: node:14
+    scanner: false
+    overrides:
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+    build:
+      - yarn install
+    command: yarn watch
+    hosts:
+      - database
+      - cache
+      - search
+
+  search:
+    type: compose
+    portforward: false
+    scanner: false
+    services:
+      image: getmeili/meilisearch:v0.19.0
+      command: ./meilisearch
+
+proxy:
+  email:
+    - email.sanctum8.lndo.site
+  search:
+    - hostname: search.sanctum8.lndo.site
+      port: 7700
+
+#
+# Tooling
+#------------------------------------------------------------------------------
+
+tooling:
+
+  yarn:
+    service: node
+    description: Runs yarn commands
+    cmd: yarn
+
+  yarnnova:
+    service: node
+    description: Runs yarn commands in nova
+    cmd: cd $LANDO_MOUNT/nova-3.27.0 && yarn
+
+  xdebug-on:
+    service: appserver
+    description: Enable xdebug for nginx.
+    cmd: rm -f /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && docker-php-ext-enable xdebug && pkill -o -USR2 php-fpm && echo "Xdebug enabled"
+    user: root
+
+  xdebug-off:
+    service: appserver
+    description: Disable xdebug for nginx.
+    cmd: rm -f /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini && pkill -o -USR2 php-fpm && echo "Xdebug disabled"
+    user: root
