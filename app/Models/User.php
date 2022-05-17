@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Mail\MagicPasswordlessLoginLink;
+use Grosv\LaravelPasswordlessLogin\PasswordlessLogin;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -41,4 +44,10 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function sendLoginUrlLink() {
+//        $url = PasswordlessLogin::forUser($this)->setRedirectUrl('/api/user')->generate();
+        $url = PasswordlessLogin::forUser($this)->generate();
+        Mail::to($this->email)->queue(new MagicPasswordlessLoginLink($url));
+    }
 }

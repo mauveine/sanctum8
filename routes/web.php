@@ -15,4 +15,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+})->middleware(['auth']);
+
+Route::get('/test-login', function () {
+    /** @var \App\Models\User $user */
+    $user = \App\Models\User::find(1);
+    $user->sendLoginUrlLink();
 });
